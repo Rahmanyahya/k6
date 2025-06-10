@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model InternalLogger {
+  uuid      String   @id
+  userId    String
+  target    String
+  request   String   @db.LongText
+  createdAt DateTime @default(now())
+  user      user     @relation(fields: [userId], references: [uuid])
+
+  @@index([userId], map: "InternalLogger_userId_fkey")
+}
+
+model certificate {
+  uuid          String           @id
+  courseId      String
+  noCertificate String?          @db.VarChar(100)
+  description   String?          @db.Text
+  placeNDate    String?
+  namaTercantum String?          @db.Char(100)
+  namaJabatan   String
+  signature     String?          @db.Text
+  stemple       String?          @db.Text
+  onDelete      Boolean          @default(false)
+  type          certificate_type
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime
+  course        course           @relation(fields: [courseId], references: [uuid])
+
+  @@index([courseId], map: "certificate_courseId_fkey")
+  @@index([uuid, courseId, noCertificate, namaTercantum])
+}
+
+model course {
+  uuid          String          @id
+  moodleId      Int?            @unique
+  groupId       String?         @unique
+  title         String          @db.VarChar(255)
+  description   String          @db.Text
+  image         String          @db.Text
+  content       String          @db.Text
+  learned       String          @db.Text
+  status        Boolean         @default(true)
+  onDelete      Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  certificate   certificate[]
+  group         group?          @relation(fields: [groupId], references: [uuid])
+  courseHistory courseHistory[]
+
+  @@index([uuid, moodleId, groupId, title])
+}
+
+model courseHistory {
+  uuid               String                           @id
+  userId             String
+  courseId           String
+  pretestScore       Int                              @default(0)
+  postestScore       Int                              @default(0)
+  pretestStatus      Boolean                          @default(false)
+  posttestStatus     Boolean                          @default(false)
+  status             Boolean                          @default(false)
+  linkPortfolio      String?                          @db.Text
+  sertifikat         String?                          @db.Text
+  statusRegistration courseHistory_statusRegistration @default(Waiting)
+  mainCourse         Boolean                          @default(false)
+  onDelete           Boolean                          @default(false)
+  createdAt          DateTime                         @default(now())
+  updatedAt          DateTime
+  course             course                           @relation(fields: [courseId], references: [uuid])
+  user               user                             @relation(fields: [userId], references: [uuid])
+  karya              karya?
+
+  @@index([courseId], map: "courseHistory_courseId_fkey")
+  @@index([userId], map: "courseHistory_userId_fkey")
+  @@index([uuid, userId, courseId])
+}
+
+model externalLogger {
+  uuid      String   @id
+  ip        String
+  target    String
+  request   String   @db.LongText
+  createdAt DateTime @default(now())
+}
+
+model group {
+  uuid           String   @id
+  mainCourse     Int      @unique
+  pretestCourse  Int?     @unique
+  posttestCourse Int?     @unique
+  onDelete       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
+  course         course?
+
+  @@index([uuid, mainCourse, pretestCourse, posttestCourse])
+}
+
+model karya {
+  uuid            String         @id
+  courseHistoryId String         @unique
+  image           String
+  title           String         @db.Text
+  description     String         @db.Text
+  categori        karya_categori
+  linkVideo       String         @db.Text
+  status          karya_status   @default(Waiting)
+  visitor         Int            @default(0)
+  onDelete        Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime
+  courseHistory   courseHistory  @relation(fields: [courseHistoryId], references: [uuid])
+
+  @@index([uuid, courseHistoryId])
+}
+
+model news {
+  uuid        String        @id
+  title       String        @db.Text
+  userId      String
+  description String        @db.Text
+  image       String        @db.Text
+  categori    news_categori
+  onDelete    Boolean       @default(false)
+  visitor     Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  user        user          @relation(fields: [userId], references: [uuid])
+
+  @@index([userId], map: "news_userId_fkey")
+  @@index([uuid, userId])
+}
+
+model notifikasi {
+  uuid      String   @id
+  userId    String
+  message   String   @db.Text
+  status    Boolean  @default(false)
+  onDelete  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  user      user     @relation(fields: [userId], references: [uuid])
+
+  @@index([userId], map: "notifikasi_userId_fkey")
+  @@index([uuid, userId])
+}
+
+model user {
+  uuid           String           @id
+  avatar         String           @db.TinyText
+  moodleId       Int?             @unique
+  username       String           @unique
+  fullName       String           @db.VarChar(100)
+  nik            String           @unique @db.Char(20)
+  password       String           @db.Text
+  email          String           @unique @db.VarChar(100)
+  gender         user_gender
+  schoolName     String?          @db.VarChar(100)
+  noWa           String           @db.VarChar(15)
+  birthDate      DateTime
+  address        String?          @db.Text
+  npsn           String?
+  role           user_role        @default(participant)
+  status         Boolean          @default(true)
+  province       String           @db.VarChar(255)
+  city           String           @db.VarChar(255)
+  subdistrict    String           @db.VarChar(255)
+  village        String           @db.VarChar(255)
+  onDelete       Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  InternalLogger InternalLogger[]
+  courseHistory  courseHistory[]
+  news           news[]
+  notifikasi     notifikasi[]
+
+  @@index([uuid, moodleId, fullName, nik, username])
+}
+
+enum karya_categori {
+  Teknologi_Pendidikan
+  AI_dalam_Pembelajaran
+  Gamifikasi_Edukasi
+  Tools_Pembelajaran_Digital
+  Media_Pembelajaran_Digital
+  Pelatihan_Guru_Digital
+  Kurikulum_Digital
+  Evaluasi_Digital
+  Presentasi_Pembelajaran
+  Etika_Dan_Literasi_Digital
+}
+
+enum news_categori {
+  Teknologi_Pendidikan
+  AI_dalam_Pembelajaran
+  Gamifikasi_Edukasi
+  Tools_Pembelajaran_Digital
+  Media_Pembelajaran_Digital
+  Pelatihan_Guru_Digital
+  Kurikulum_Digital
+  Evaluasi_Digital
+  Presentasi_Pembelajaran
+  Etika_Dan_Literasi_Digital
+}
+
+enum karya_status {
+  Accept
+  Reject
+  Waiting
+  Drop_Out
+}
+
+enum user_gender {
+  L
+  P
+}
+
+enum courseHistory_statusRegistration {
+  Accept
+  Reject
+  Waiting
+  Drop_Out
+}
+
+enum certificate_type {
+  Instructor
+  Participant
+}
+
+enum user_role {
+  participant
+  instructor
+  administrator
+}
